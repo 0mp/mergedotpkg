@@ -1,0 +1,39 @@
+#! /bin/sh -
+#
+# SPDX-FileCopyrightText: 2026 Mateusz Piotrowski <0mp@FreeBSD.org>
+# SPDX-License-Identifier: BSD-2-Clause
+#
+
+set -eu
+
+types="pkgnew pkgsave"
+
+for type in ${types}; do
+    list="/tmp/${type}-list"
+    find / -name "*${type}" | tee "$list"
+    for new in $(cat "$list"); do
+        ok=false
+        while [ "$ok" = false ]; do
+            old="${new%".${type}"}"
+            merged="${new}.merged"
+            sdiff -o "$merged" "$old" "$new"
+            while read -p "${old} merged? [yn] " ok; do
+                case $ok in
+                    [yY]*)
+                        ok=true;
+                        cp "$merged" "$old"
+                        rm "$new" "$merged"
+                        break
+                        ;;
+                esac
+            done
+        done
+
+        case "$old" in
+            /etc/master.passwd)
+                pwd_mkdb -p /etc/master.passwd
+                ;;
+        esac
+    done
+    rm "$list"
+done
