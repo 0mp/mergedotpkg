@@ -6,34 +6,74 @@
 
 set -eu
 
+usage() {
+	cat << EOF
+$0 [-h] [-d search_path ...]
+-d search_path  Search the provided path for .pkgnew and .pkgsave files.
+                The provided path cannot contain whitespace. The flag can be
+                specified more than once. Default: "/".
+-h              Show usage message.
+EOF
+}
+
+search_paths=""
 types="pkgnew pkgsave"
 
-for type in ${types}; do
-    list="/tmp/${type}-list"
-    find / -name "*${type}" | tee "$list"
-    for new in $(cat "$list"); do
-        ok=false
-        while [ "$ok" = false ]; do
-            old="${new%".${type}"}"
-            merged="${new}.merged"
-            sdiff -o "$merged" "$old" "$new"
-            while read -p "${old} merged? [yn] " ok; do
-                case $ok in
-                    [yY]*)
-                        ok=true;
-                        cp "$merged" "$old"
-                        rm "$new" "$merged"
-                        break
-                        ;;
-                esac
-            done
-        done
+OPTIND=1
+while getopts d:h opt; do
+	case $opt in
+	d)
+		search_paths="${search_paths} ${OPTARG}"
+		;;
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		printf 'ERROR: Unknown option: %s' "$opt" >&2
+		usage >&2
+		exit 1
+		;;
+	esac
+done
+shift "$(( OPTIND - 1 ))"
 
-        case "$old" in
-            /etc/master.passwd)
-                pwd_mkdb -p /etc/master.passwd
-                ;;
-        esac
-    done
-    rm "$list"
+if [ "$search_paths" = "" ]; then
+	search_paths="/"
+fi
+
+for type in ${types}; do
+	list="/tmp/${type}-list"
+	find ${search_paths} -name "*${type}" | tee "$list"
+	for new in $(cat "$list"); do
+		ok=false
+		while [ "$ok" = false ]; do
+			old="${new%".${type}"}"
+			merged="${new}.merged"
+			sdiff -o "$merged" "$old" "$new"
+			while [ "${MOCK_READ_YES:-}" = "true" ] || \
+			    read -p "${old} merged? [yn] " ok
+			do
+				if [ "${MOCK_READ_YES:-}" = "true" ]; then
+					ok="y"
+				fi
+				case $ok in
+				[yY]*)
+					ok="true"
+					cp "$merged" "$old"
+					rm "$new"
+					rm "$merged"
+					break
+					;;
+				esac
+			done
+		done
+
+		case "$old" in
+		/etc/master.passwd)
+			pwd_mkdb -p /etc/master.passwd
+			;;
+		esac
+	done
+	rm "$list"
 done
