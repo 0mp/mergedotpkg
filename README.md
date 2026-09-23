@@ -15,3 +15,9 @@ PREFIX=/usr/local make install
 ```sh
 mergedotpkg
 ```
+
+## Tests
+
+```
+make test
+```

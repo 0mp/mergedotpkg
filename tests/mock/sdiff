@@ -1,0 +1,17 @@
+#! /bin/sh -
+
+set -eu
+
+if [ "$1" != "-o" ]; then
+	exit 1
+fi
+if [ ! -e "$3" ]; then
+	exit 1
+fi
+if [ ! -e "$4" ]; then
+	exit 1
+fi
+
+export EDITOR=ed
+export VISUAL=ed
+printf "$MOCK_SDIFF_SESSION" | command -p sdiff "$@"
