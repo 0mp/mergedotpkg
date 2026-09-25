@@ -67,13 +67,16 @@ for type in ${types}; do
 
 		ok=false
 		while [ "$ok" = false ]; do
-			sdiff -o "$merged" "$old" "$new"
-			while [ "${MOCK_READ_YES:-}" = "true" ] || \
+			printf 'Merging into %s from %s:\n' "$old" "$new"
+			if ! sdiff -o "$merged" "$old" "$new"; then
+				if [ "$?" -gt 1 ]; then
+					printf 'ERROR: Failed to merge into %s from %s\n' \
+					    "$old" "$new" >&2
+				fi
+			fi
+			while { [ "${MOCK_READ_YES:-}" = "true" ] && ok="y"; } ||
 			    read -p "${old} merged? [yn] " ok
 			do
-				if [ "${MOCK_READ_YES:-}" = "true" ]; then
-					ok="y"
-				fi
 				case $ok in
 				[yY]*)
 					ok="true"
@@ -93,3 +96,4 @@ for type in ${types}; do
 		esac
 	done
 done
+exit 0
