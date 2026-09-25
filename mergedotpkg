@@ -23,6 +23,7 @@ $0 [-h] [-d search_path ...]
 
 XDG_CACHE_DIR   Directory for backup copies of processed files.
                 Default: "${HOME}/.cache".
+TMPDIR          Directory for temporary files. Default: "/tmp".
 EOF
 }
 
