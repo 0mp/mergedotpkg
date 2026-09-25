@@ -55,9 +55,7 @@ if [ "$search_paths" = "" ]; then
 fi
 
 for type in ${types}; do
-	find ${search_paths} -name "*${type}" |
-	    while IFS= read -r new
-	do
+	for new in $(find ${search_paths} -name "*${type}"); do
 		old="${new%".${type}"}"
 		merged="${new}.merged"
 
