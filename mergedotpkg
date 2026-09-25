@@ -6,6 +6,13 @@
 
 set -eu
 
+back_up_file() {
+	local _file="$1"
+	local _realpath
+	_realpath="$(realpath "$new")"
+	printf '%s\n' "$_file" | pax -rw "$backup_dir"
+}
+
 usage() {
 	cat << EOF
 $0 [-h] [-d search_path ...]
@@ -13,10 +20,14 @@ $0 [-h] [-d search_path ...]
                 The provided path cannot contain whitespace. The flag can be
                 specified more than once. Default: "/".
 -h              Show usage message.
+
+XDG_CACHE_DIR   Directory for backup copies of processed files.
+                Default: "${HOME}/.cache".
 EOF
 }
 
 search_paths=""
+backup_dir_template="${XDG_CACHE_DIR:-"${HOME}/.cache"}/$(date -Iseconds).XXXXX"
 types="pkgnew pkgsave"
 
 OPTIND=1
@@ -43,13 +54,20 @@ if [ "$search_paths" = "" ]; then
 fi
 
 for type in ${types}; do
-	list="/tmp/${type}-list"
-	find ${search_paths} -name "*${type}" | tee "$list"
-	for new in $(cat "$list"); do
+	find ${search_paths} -name "*${type}" |
+	    while IFS= read -r new
+	do
+		old="${new%".${type}"}"
+		merged="${new}.merged"
+
+		if [ "${backup_dir:-}" = "" ]; then
+			backup_dir="$(mktemp -d "${backup_dir_template}")"
+		fi
+		back_up_file "$old"
+		back_up_file "$new"
+
 		ok=false
 		while [ "$ok" = false ]; do
-			old="${new%".${type}"}"
-			merged="${new}.merged"
 			sdiff -o "$merged" "$old" "$new"
 			while [ "${MOCK_READ_YES:-}" = "true" ] || \
 			    read -p "${old} merged? [yn] " ok
@@ -75,5 +93,4 @@ for type in ${types}; do
 			;;
 		esac
 	done
-	rm "$list"
 done
